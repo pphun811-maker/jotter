@@ -1,0 +1,18 @@
+# 构建产物
+dist/
+src/bin/
+src/obj/
+*.pdb
+
+# 私人笔记备份 —— 严禁提交
+_notes-backup/
+*.md.bak
+
+# 本机一次性迁移脚本
+migrate-notes.ps1
+
+# IDE / 系统
+.vs/
+.idea/
+Thumbs.db
+.DS_Store

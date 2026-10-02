@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: transparent; }
+  body { font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif; }
+  .win {
+    width: 720px; height: 360px;
+    display: flex; flex-direction: column;
+    background: #0f0f0f; border: 1px solid #2e2e2e; border-radius: 12px;
+    overflow: hidden;
+  }
+  .title {
+    flex: none; height: 44px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px;
+  }
+  .brand { display: flex; align-items: center; gap: 9px; }
+  .brand .dot { width: 7px; height: 7px; border-radius: 50%; background: #6b6b6b; }
+  .brand .word { font-size: 13px; color: #7a7a7a; letter-spacing: 3.5px; font-weight: 600; }
+  .title .time { font-size: 14px; color: #4f4f4f; font-variant-numeric: tabular-nums; }
+  .input {
+    flex: 1; padding: 2px 24px 0;
+    font-size: 21px; line-height: 1.65; color: #f0f0f0;
+  }
+  .foot {
+    flex: none; height: 50px; padding: 0 24px;
+    border-top: 1px solid #1d1d1d;
+    display: flex; align-items: center; justify-content: flex-end;
+    font-size: 14px;
+  }
+  .foot .count { font-variant-numeric: tabular-nums; color: #8a8a8a; }
+  .foot .count b { color: #c9c9c9; font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="win">
+    <div class="title">
+      <span class="brand"><span class="dot"></span><span class="word">JOTTER</span></span>
+      <span class="time">2026-10-01 周四 03:44</span>
+    </div>
+    <div class="input">记一下：明早十点跟产品对齐排期，带上周的灰度数据。</div>
+    <div class="foot">
+      <span class="count"><b>23</b> 字</span>
+    </div>
+  </div>
+</body>
+</html>
