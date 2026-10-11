@@ -13,6 +13,7 @@ public partial class App : Application
     private Mutex? _mutex;
     private MainWindow? _main;
     private NotifyIcon? _tray;
+    private ViewerWindow? _viewer;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -25,6 +26,19 @@ public partial class App : Application
             return;
         }
         base.OnStartup(e);
+
+        // 未捕获异常落盘，别无声死掉（极简：一行一异常，覆盖写）
+        DispatcherUnhandledException += (s, e) =>
+        {
+            try
+            {
+                System.IO.File.WriteAllText(
+                    System.IO.Path.Combine(AppContext.BaseDirectory, "_crash.log"),
+                    e.Exception.ToString());
+            }
+            catch { /* 日志写不进去就算了 */ }
+            e.Handled = true; // 常驻托盘的应用崩掉比出错更糟
+        };
 
         _main = new MainWindow();
         new WindowInteropHelper(_main).EnsureHandle(); // 后台常驻：不显示窗口但热键立即生效
@@ -48,6 +62,7 @@ public partial class App : Application
         var menu = new ContextMenuStrip();
 
         menu.Items.Add("记一条", null, (s, e) => _main?.ShowPopup());
+        menu.Items.Add("查看笔记", null, (s, e) => OpenViewer());
         menu.Items.Add("打开笔记文件夹", null, (s, e) => OpenNotesFolder());
 
         var auto = new ToolStripMenuItem("开机自启动") { CheckOnClick = true, Checked = AutoStart.IsEnabled() };
@@ -63,9 +78,33 @@ public partial class App : Application
         return menu;
     }
 
+    /// <summary>
+    /// 软件内查看笔记：单例窗口，已开着就刷新并激活，不重复开；
+    /// 主弹窗如果正在显示先收起（保草稿），免得 Topmost 压住查看窗。
+    /// （托盘菜单和主弹窗顶栏共用此入口）
+    /// </summary>
+    public void OpenViewer()
+    {
+        if (_main?.IsVisible == true) _main.HidePopup(keepDraft: true);
+
+        if (_viewer == null)
+        {
+            _viewer = new ViewerWindow(JotterConfig.LoadOrDefault());
+            _viewer.Closed += (s, e) => _viewer = null;
+            _viewer.Show();
+        }
+        else
+        {
+            _viewer.Reload();
+            if (!_viewer.IsVisible) _viewer.Show();
+            _viewer.Activate();
+        }
+    }
+
     private void OpenNotesFolder()
     {
-        var folder = new JotterConfig().EffectiveNotesFolder;
+        // LoadOrDefault 而非 new：用户在 settings.json 自定义过 NotesFolder 时要打开对的地方
+        var folder = JotterConfig.LoadOrDefault().EffectiveNotesFolder;
         System.IO.Directory.CreateDirectory(folder);
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
         {
@@ -81,7 +120,7 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    private static Icon MakeIcon()
+    internal static Icon MakeIcon()
     {
         using var bmp = new Bitmap(32, 32);
         using (var g = Graphics.FromImage(bmp))

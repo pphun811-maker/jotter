@@ -1,0 +1,127 @@
+<Window x:Class="Jotter.ViewerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="Jotter 笔记"
+        Width="640" Height="520"
+        MinWidth="480" MinHeight="360"
+        WindowStyle="None" ResizeMode="CanResize"
+        ShowInTaskbar="True" Topmost="False"
+        WindowStartupLocation="CenterScreen"
+        Background="#FF0F0F0F"
+        FontFamily="Microsoft YaHei UI"
+        PreviewKeyDown="Window_PreviewKeyDown">
+  <shell:WindowChrome.WindowChrome>
+    <!-- 与主弹窗同款：无边框 + 6 DIP 隐形拖拽边 -->
+    <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6"
+                        GlassFrameThickness="0" CornerRadius="0"
+                        UseAeroCaptionButtons="False"/>
+  </shell:WindowChrome.WindowChrome>
+
+  <!-- 圆角走 DWM（代码里设 CornerPreference），这里的 CornerRadius 与之对齐 -->
+  <Border BorderBrush="#FF2E2E2E" BorderThickness="1" CornerRadius="8" Background="#FF0F0F0F">
+    <DockPanel>
+      <!-- 顶栏：字标 + 关闭 -->
+      <Grid DockPanel.Dock="Top" Height="30" Background="Transparent"
+            MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+          <Ellipse Width="5" Height="5" Fill="#FF6B6B6B" VerticalAlignment="Center"/>
+          <TextBlock Text="J O T T E R" FontSize="9" FontWeight="SemiBold"
+                     Foreground="#FF7A7A7A" Margin="7,0,0,0"
+                     VerticalAlignment="Center"/>
+        </StackPanel>
+        <Button x:Name="CloseBtn" Width="30" Height="22"
+                HorizontalAlignment="Right" VerticalAlignment="Center"
+                Margin="0,0,10,0" Content="×" FontSize="13" Cursor="Hand"
+                Foreground="#FF6A6A6A" Click="CloseBtn_Click">
+          <Button.Template>
+            <ControlTemplate TargetType="Button">
+              <Border x:Name="Bd" Background="Transparent" CornerRadius="4">
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter TargetName="Bd" Property="Background" Value="#FF222222"/>
+                  <Setter Property="Foreground" Value="#FFC9C9C9"/>
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Button.Template>
+        </Button>
+      </Grid>
+
+      <!-- 左列表 + 右内容 -->
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <!-- Auto：列表收起时整列归零，空态不留暗条 -->
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <ListBox x:Name="FileList" Grid.Column="0" Width="180"
+                 Background="#FF131313" BorderThickness="0"
+                 SelectionChanged="FileList_SelectionChanged"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 VirtualizingPanel.IsVirtualizing="False">
+          <ListBox.Resources>
+            <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimVScroll}"/>
+          </ListBox.Resources>
+          <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem">
+              <Setter Property="Foreground" Value="#FF9A9A9A"/>
+              <Setter Property="FontSize" Value="11.5"/>
+              <Setter Property="Padding" Value="14,7,10,7"/>
+              <Setter Property="SnapsToDevicePixels" Value="True"/>
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}">
+                      <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="Bd" Property="Background" Value="#FF1B1B1B"/>
+                      </Trigger>
+                      <Trigger Property="IsSelected" Value="True">
+                        <Setter TargetName="Bd" Property="Background" Value="#FF262626"/>
+                        <Setter Property="Foreground" Value="#FFE0E0E0"/>
+                      </Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+            </Style>
+          </ListBox.ItemContainerStyle>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Border x:Name="ListSplitter" Grid.Column="1" Width="1" Background="#FF1D1D1D"/>
+
+        <FlowDocumentScrollViewer x:Name="DocView" Grid.Column="2"
+                                  Background="Transparent" Foreground="#FFD6D6D6"
+                                  VerticalScrollBarVisibility="Auto"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <FlowDocumentScrollViewer.Resources>
+            <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimVScroll}"/>
+          </FlowDocumentScrollViewer.Resources>
+        </FlowDocumentScrollViewer>
+
+        <!-- 空态 -->
+        <StackPanel x:Name="EmptyHint" Grid.Column="0" Grid.ColumnSpan="3"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Visibility="Collapsed">
+          <TextBlock Text="还没有笔记" FontSize="13" Foreground="#FF6A6A6A"
+                     HorizontalAlignment="Center"/>
+          <TextBlock Margin="0,8,0,0" HorizontalAlignment="Center" FontSize="10.5"
+                     Foreground="#FF4A4A4A"
+                     Text="按全局热键（默认 Ctrl+Alt+N）记下第一条吧"/>
+        </StackPanel>
+      </Grid>
+    </DockPanel>
+  </Border>
+</Window>

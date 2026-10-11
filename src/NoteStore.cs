@@ -44,6 +44,21 @@ public static class NoteStore
         sb.AppendLine();
     }
 
+    /// <summary>
+    /// 列出可查看的笔记文档：总文档在前，周文档按文件名倒序（最新一周在最上）。
+    /// 目录不存在时返回空列表。
+    /// </summary>
+    public static IReadOnlyList<string> ListNoteFiles(string folder)
+    {
+        if (!Directory.Exists(folder)) return Array.Empty<string>();
+        var files = new List<string>();
+        var master = Path.Combine(folder, MasterFile);
+        if (File.Exists(master)) files.Add(master);
+        files.AddRange(Directory.GetFiles(folder, "*-W*.md")
+            .OrderByDescending(f => f, StringComparer.OrdinalIgnoreCase));
+        return files;
+    }
+
     /// <summary>总文档被删过就重建：按文件名顺序把各周条目汇总（跳过周标题行）。</summary>
     private static void EnsureMasterBuilt(string folder, string master)
     {

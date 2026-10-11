@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Input;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
 
 namespace Jotter;
@@ -181,7 +182,8 @@ public partial class MainWindow : Window
         if (IsVisible) PositionBottomRight(); // DPI 上下文切换后按新比例重新归位
     }
 
-    private void HidePopup(bool keepDraft)
+    // 托盘"查看笔记"和顶栏入口都要用：收起弹窗但草稿留着
+    public void HidePopup(bool keepDraft)
     {
         if (!keepDraft) InputBox.Clear();
         Hide();
@@ -233,6 +235,13 @@ public partial class MainWindow : Window
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
+    }
+
+    // 顶栏"查看"入口：e.Handled 防止按下被顶栏当拖拽吞掉
+    private void ViewNotes_Click(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (Application.Current is App app) app.OpenViewer();
     }
 
     protected override void OnClosing(CancelEventArgs e)
