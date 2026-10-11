@@ -9,7 +9,7 @@
         ShowInTaskbar="True" Topmost="False"
         WindowStartupLocation="CenterScreen"
         Background="#FF0F0F0F"
-        FontFamily="Microsoft YaHei UI"
+        FontFamily="Segoe UI, Microsoft YaHei UI"
         PreviewKeyDown="Window_PreviewKeyDown">
   <shell:WindowChrome.WindowChrome>
     <!-- 与主弹窗同款：无边框 + 6 DIP 隐形拖拽边 -->
@@ -17,6 +17,10 @@
                         GlassFrameThickness="0" CornerRadius="0"
                         UseAeroCaptionButtons="False"/>
   </shell:WindowChrome.WindowChrome>
+
+  <Window.Resources>
+    <!-- EntryOp 按钮样式已上移 App.xaml，与确认框共用 -->
+  </Window.Resources>
 
   <!-- 圆角走 DWM（代码里设 CornerPreference），这里的 CornerRadius 与之对齐 -->
   <Border BorderBrush="#FF2E2E2E" BorderThickness="1" CornerRadius="8" Background="#FF0F0F0F">
@@ -50,7 +54,32 @@
         </Button>
       </Grid>
 
-      <!-- 左列表 + 右内容 -->
+      <!-- 底部编辑条：点"修改"后出现，保存时周文档+总文档同步更新 -->
+      <Border x:Name="EditBar" DockPanel.Dock="Bottom" Background="#FF161616"
+              BorderBrush="#FF1D1D1D" BorderThickness="0,1,0,0" Padding="14,10,14,12"
+              Visibility="Collapsed">
+        <StackPanel>
+          <TextBlock x:Name="EditStamp" FontSize="10.5" Foreground="#FF8A8A8A"/>
+          <TextBox x:Name="EditBox" Margin="0,7,0,0" MaxHeight="110"
+                   Background="#FF101010" BorderBrush="#FF2E2E2E" BorderThickness="1"
+                   Foreground="#FFF0F0F0" CaretBrush="#FFF0F0F0"
+                   SelectionBrush="#FF5A5A5A" SelectionTextBrush="#FFF0F0F0"
+                   FontSize="12.5" Padding="8,6" AcceptsReturn="True" TextWrapping="Wrap"
+                   VerticalScrollBarVisibility="Auto"
+                   ContextMenu="{StaticResource TextBoxMenu}">
+            <TextBox.Resources>
+              <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimVScroll}"/>
+            </TextBox.Resources>
+          </TextBox>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,9,0,0">
+            <Button Content="取消" Style="{StaticResource EntryOp}" Click="EditCancel_Click"/>
+            <Button Content="保存" Style="{StaticResource EntryOp}" Margin="6,0,0,0"
+                    Click="EditSave_Click" FontWeight="SemiBold"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- 左列表 + 右条目流 -->
       <Grid>
         <Grid.ColumnDefinitions>
           <!-- Auto：列表收起时整列归零，空态不留暗条 -->
@@ -102,14 +131,62 @@
 
         <Border x:Name="ListSplitter" Grid.Column="1" Width="1" Background="#FF1D1D1D"/>
 
-        <FlowDocumentScrollViewer x:Name="DocView" Grid.Column="2"
-                                  Background="Transparent" Foreground="#FFD6D6D6"
-                                  VerticalScrollBarVisibility="Auto"
-                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-          <FlowDocumentScrollViewer.Resources>
-            <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimVScroll}"/>
-          </FlowDocumentScrollViewer.Resources>
-        </FlowDocumentScrollViewer>
+        <DockPanel Grid.Column="2">
+          <TextBlock x:Name="DocTitle" DockPanel.Dock="Top" FontSize="13" FontWeight="SemiBold"
+                     Foreground="#FF8A8A8A" Margin="22,16,22,2"/>
+
+          <!-- 每条速记一张卡片，单击选中露出 复制/修改/删除 -->
+          <ListBox x:Name="EntryList" Background="Transparent" BorderThickness="0"
+                   SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.Resources>
+              <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimVScroll}"/>
+            </ListBox.Resources>
+            <ListBox.ItemContainerStyle>
+              <Style TargetType="ListBoxItem">
+                <!-- 选中视觉交给卡片模板，容器保持透明 -->
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                      <Border Background="Transparent">
+                        <ContentPresenter/>
+                      </Border>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+              </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Border x:Name="Card" Margin="12,8,14,0" Padding="14,10,8,12"
+                        CornerRadius="6" BorderThickness="1"
+                        BorderBrush="#FF1D1D1D" Background="#FF141414">
+                  <StackPanel>
+                    <Grid>
+                      <TextBlock Text="{Binding Stamp}" FontSize="12.5" FontWeight="Bold"
+                                 Foreground="#FFC9C9C9" VerticalAlignment="Center"/>
+                      <StackPanel x:Name="Ops" Orientation="Horizontal" HorizontalAlignment="Right"
+                                  Visibility="Hidden">
+                        <Button Content="复制" Style="{StaticResource EntryOp}" Click="CopyEntry_Click"/>
+                        <Button Content="修改" Style="{StaticResource EntryOp}" Click="EditEntry_Click"/>
+                        <Button Content="删除" Style="{StaticResource EntryOp}" Click="DeleteEntry_Click"/>
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Text="{Binding Body}" FontSize="12.5" Foreground="#FFD6D6D6"
+                               TextWrapping="Wrap" Margin="0,5,0,0"/>
+                  </StackPanel>
+                </Border>
+                <DataTemplate.Triggers>
+                  <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                               Value="True">
+                    <Setter TargetName="Card" Property="BorderBrush" Value="#FF3D3D3D"/>
+                    <Setter TargetName="Card" Property="Background" Value="#FF1C1C1C"/>
+                    <Setter TargetName="Ops" Property="Visibility" Value="Visible"/>
+                  </DataTrigger>
+                </DataTemplate.Triggers>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
 
         <!-- 空态 -->
         <StackPanel x:Name="EmptyHint" Grid.Column="0" Grid.ColumnSpan="3"

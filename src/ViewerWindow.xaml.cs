@@ -2,13 +2,13 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Color = System.Windows.Media.Color;
 using ColorConverter = System.Windows.Media.ColorConverter;
+using Clipboard = System.Windows.Clipboard;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MessageBox = System.Windows.MessageBox;
 
@@ -23,10 +23,9 @@ public partial class ViewerWindow : Window
     private static extern void DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
 
     private sealed record NoteDoc(string Path, string Name);
+    private sealed record EntryVM(string Stamp, string Body);
 
-    private static readonly SolidColorBrush StampBrush = MakeBrush("#FFC9C9C9");
-    private static readonly SolidColorBrush BodyBrush = MakeBrush("#FFD6D6D6");
-    private static readonly SolidColorBrush HeaderBrush = MakeBrush("#FF8A8A8A");
+    private static readonly SolidColorBrush TitleBrush = MakeBrush("#FF8A8A8A");
     private static readonly SolidColorBrush ErrorBrush = MakeBrush("#FFC97A7A");
 
     private static SolidColorBrush MakeBrush(string hex)
@@ -37,6 +36,8 @@ public partial class ViewerWindow : Window
     }
 
     private readonly JotterConfig _config;
+    private string? _currentFile;          // 正在查看的文件
+    private string? _editStamp, _editBody; // 正在编辑的条目（原值，用于文件内定位）
 
     public ViewerWindow(JotterConfig config)
     {
@@ -61,20 +62,30 @@ public partial class ViewerWindow : Window
         Loaded += (s, e) => Reload();
     }
 
-    /// <summary>每次打开都重扫重渲染——笔记可能刚写完。</summary>
+    /// <summary>每次打开都重扫重渲染——笔记可能刚写完。尽量保住当前查看的文件。</summary>
     public void Reload()
     {
         var files = NoteStore.ListNoteFiles(_config.EffectiveNotesFolder);
         var hasNotes = files.Count > 0;
         FileList.Visibility = hasNotes ? Visibility.Visible : Visibility.Collapsed;
         ListSplitter.Visibility = hasNotes ? Visibility.Visible : Visibility.Collapsed;
-        DocView.Visibility = hasNotes ? Visibility.Visible : Visibility.Collapsed;
         EmptyHint.Visibility = hasNotes ? Visibility.Collapsed : Visibility.Visible;
-        if (!hasNotes) return;
+        if (!hasNotes)
+        {
+            DocTitle.Visibility = Visibility.Collapsed;
+            EntryList.ItemsSource = null;
+            return;
+        }
 
+        var keep = _currentFile;
         FileList.ItemsSource = files.Select(f => new NoteDoc(f, DisplayName(f))).ToList();
-        FileList.SelectedIndex = 0; // 默认总文档，它是全量汇总
-        Render(files[0]); // 选中项没变时 SelectionChanged 不触发，这里兜一次保证新鲜
+        var idx = 0;
+        for (int i = 0; i < files.Count; i++)
+        {
+            if (string.Equals(files[i], keep, StringComparison.OrdinalIgnoreCase)) { idx = i; break; }
+        }
+        FileList.SelectedIndex = idx;   // 与上次相同不会触发 SelectionChanged
+        LoadFile(files[idx]);           // 所以这里兜一次，保证内容新鲜
     }
 
     private static string DisplayName(string path)
@@ -85,79 +96,113 @@ public partial class ViewerWindow : Window
 
     private void FileList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (FileList.SelectedItem is NoteDoc doc) Render(doc.Path);
+        if (FileList.SelectedItem is NoteDoc doc) LoadFile(doc.Path);
     }
 
-    /// <summary>
-    /// 轻量逐行渲染：# 行是周标题，**...** 整行是条目时间戳，其余为正文；
-    /// 其他 Markdown 语法原样保留，文本可选中复制。
-    /// </summary>
-    private void Render(string path)
+    /// <summary>把文件解析成条目卡片流。</summary>
+    private void LoadFile(string path)
     {
-        var doc = new FlowDocument { PagePadding = new Thickness(22, 16, 22, 22) };
+        _currentFile = path;
         try
         {
-            foreach (var raw in File.ReadAllLines(path))
-            {
-                var line = raw.TrimEnd();
-                if (line.Length == 0)
-                {
-                    // 空行留个紧凑间隔（条目间已有时间戳的上边距，别叠太开）
-                    doc.Blocks.Add(new Paragraph { FontSize = 5, Margin = new Thickness(0) });
-                }
-                else if (line.StartsWith("# "))
-                {
-                    doc.Blocks.Add(new Paragraph(new Run(line[2..]))
-                    {
-                        FontSize = 15,
-                        FontWeight = FontWeights.SemiBold,
-                        Foreground = HeaderBrush,
-                        Margin = new Thickness(0, 6, 0, 4),
-                    });
-                }
-                else if (line.StartsWith("**") && line.EndsWith("**") && line.Length > 4)
-                {
-                    doc.Blocks.Add(new Paragraph(new Run(line[2..^2]))
-                    {
-                        FontSize = 12.5,
-                        FontWeight = FontWeights.Bold,
-                        Foreground = StampBrush,
-                        Margin = new Thickness(0, 12, 0, 2),
-                    });
-                }
-                else
-                {
-                    doc.Blocks.Add(new Paragraph(new Run(line))
-                    {
-                        FontSize = 12.5,
-                        Foreground = BodyBrush,
-                        LineHeight = 22,
-                        Margin = new Thickness(0),
-                    });
-                }
-            }
+            var (title, entries) = NoteStore.ParseDocument(File.ReadAllLines(path));
+            // 总文档内部混有各周 H1，解析到的 title 不可用；只有周文档标题在文件顶部才可信
+            var isMaster = DisplayName(path) == "总文档";
+            DocTitle.Text = isMaster ? "总文档" : (title ?? DisplayName(path));
+            DocTitle.Visibility = Visibility.Visible;
+            EntryList.ItemsSource = entries.Select(en => new EntryVM(en.Stamp, en.Body)).ToList();
         }
         catch (Exception ex)
         {
-            doc.Blocks.Add(new Paragraph(new Run("读取失败：" + ex.Message))
-            {
-                Foreground = ErrorBrush,
-                Margin = new Thickness(0, 12, 0, 0),
-            });
+            DocTitle.Text = DisplayName(path);
+            DocTitle.Visibility = Visibility.Visible;
+            EntryList.ItemsSource = new List<EntryVM> { new("读取失败", ex.Message) };
         }
-        // 每次都是新 FlowDocument 赋值，滚动位置自然归顶
-        DocView.Document = doc;
+    }
+
+    private EntryVM? SelectedEntry => EntryList.SelectedItem as EntryVM;
+
+    private void CopyEntry_Click(object sender, RoutedEventArgs e)
+    {
+        var vm = SelectedEntry;
+        if (vm == null) return;
+        try { Clipboard.SetText(vm.Body.Length > 0 ? vm.Body : vm.Stamp); }
+        catch { /* 剪贴板被占用时静默，不值得打扰 */ }
+    }
+
+    private void EditEntry_Click(object sender, RoutedEventArgs e)
+    {
+        var vm = SelectedEntry;
+        if (vm == null) return;
+        _editStamp = vm.Stamp;
+        _editBody = vm.Body;
+        EditStamp.Text = "正在修改 " + vm.Stamp;
+        EditBox.Text = vm.Body;
+        EditBar.Visibility = Visibility.Visible;
+        EditBox.Focus();
+        EditBox.CaretIndex = EditBox.Text.Length;
+    }
+
+    private void EditSave_Click(object sender, RoutedEventArgs e)
+    {
+        if (_editStamp == null) return;
+        try
+        {
+            NoteStore.UpdateEntryEverywhere(_config.EffectiveNotesFolder, _editStamp, _editBody!, EditBox.Text);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "保存失败，内容还在编辑框里：\n" + ex.Message,
+                "Jotter", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        CloseEditBar();
+        Reload();
+    }
+
+    private void EditCancel_Click(object sender, RoutedEventArgs e) => CloseEditBar();
+
+    private void CloseEditBar()
+    {
+        _editStamp = _editBody = null;
+        EditBar.Visibility = Visibility.Collapsed;
+        EditBox.Clear();
+    }
+
+    private void DeleteEntry_Click(object sender, RoutedEventArgs e)
+    {
+        var vm = SelectedEntry;
+        if (vm == null) return;
+        var preview = vm.Body.Length > 42 ? vm.Body[..42] + "…" : vm.Body;
+        var ok = ConfirmWindow.Ask(this,
+            "删除这条速记？",
+            vm.Stamp + (preview.Length > 0 ? "\n" + preview : "\n（无正文）"),
+            "会同时从周文档和总文档移除，不可恢复。",
+            "删除");
+        if (!ok) return;
+
+        try
+        {
+            NoteStore.DeleteEntryEverywhere(_config.EffectiveNotesFolder, vm.Stamp, vm.Body);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "删除失败：\n" + ex.Message,
+                "Jotter", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        Reload();
     }
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape)
-        {
-            e.Handled = true;
-            Close();
-        }
+        if (e.Key != Key.Escape) return;
+        e.Handled = true;
+        // 编辑中先取消编辑，再按一次才关窗
+        if (EditBar.Visibility == Visibility.Visible) CloseEditBar();
+        else Close();
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

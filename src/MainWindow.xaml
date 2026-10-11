@@ -9,7 +9,7 @@
         ShowInTaskbar="False" Topmost="True"
         WindowStartupLocation="Manual"
         Background="#FF0F0F0F"
-        FontFamily="Microsoft YaHei UI"
+        FontFamily="Segoe UI, Microsoft YaHei UI"
         PreviewKeyDown="Window_PreviewKeyDown">
   <shell:WindowChrome.WindowChrome>
     <!-- 无边框窗口的隐形拖拽边：外圈 6 DIP 命中区，视觉零改动 -->
@@ -73,6 +73,7 @@
                AcceptsReturn="True" TextWrapping="Wrap"
                VerticalScrollBarVisibility="Auto"
                VerticalContentAlignment="Top"
+               ContextMenu="{StaticResource TextBoxMenu}"
                TextChanged="InputBox_TextChanged">
         <TextBox.Resources>
           <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimVScroll}"/>

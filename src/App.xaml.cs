@@ -60,6 +60,11 @@ public partial class App : Application
     private ContextMenuStrip BuildTrayMenu()
     {
         var menu = new ContextMenuStrip();
+        // 原生白底菜单和整体灰阶 UI 严重打架，整套换深色
+        menu.Renderer = new ToolStripProfessionalRenderer(new DarkMenuColors());
+        menu.Font = new Font("Segoe UI", 9.5f);
+        menu.ForeColor = Color.FromArgb(214, 214, 214);
+        // 注意别关 ShowImageMargin——"开机自启动"的勾选标记画在 margin 区，关了就看不见了
 
         menu.Items.Add("记一条", null, (s, e) => _main?.ShowPopup());
         menu.Items.Add("查看笔记", null, (s, e) => OpenViewer());
@@ -118,6 +123,32 @@ public partial class App : Application
         _tray?.Dispose();
         _mutex?.Dispose();
         base.OnExit(e);
+    }
+
+    /// <summary>托盘菜单的深色配色：与主 UI 同一套灰阶。</summary>
+    private sealed class DarkMenuColors : ProfessionalColorTable
+    {
+        private static Color Bg => Color.FromArgb(15, 15, 15);      // 0F0F0F
+        private static Color Hover => Color.FromArgb(38, 38, 38);   // 262626
+        private static Color Border => Color.FromArgb(46, 46, 46);  // 2E2E2E
+        private static Color Sep => Color.FromArgb(29, 29, 29);     // 1D1D1D
+
+        public override Color ToolStripDropDownBackground => Bg;
+        public override Color ImageMarginGradientBegin => Bg;
+        public override Color ImageMarginGradientMiddle => Bg;
+        public override Color ImageMarginGradientEnd => Bg;
+        public override Color MenuBorder => Border;
+        public override Color MenuItemBorder => Hover;
+        public override Color MenuItemSelected => Hover;
+        public override Color MenuItemSelectedGradientBegin => Hover;
+        public override Color MenuItemSelectedGradientEnd => Hover;
+        public override Color MenuItemPressedGradientBegin => Hover;
+        public override Color MenuItemPressedGradientEnd => Hover;
+        public override Color CheckBackground => Hover;
+        public override Color CheckSelectedBackground => Hover;
+        public override Color CheckPressedBackground => Hover;
+        public override Color SeparatorDark => Sep;
+        public override Color SeparatorLight => Sep;
     }
 
     internal static Icon MakeIcon()
