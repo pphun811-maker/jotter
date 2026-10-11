@@ -59,18 +59,39 @@
             </Setter>
         </Style>
 
-        <!-- 输入框右键菜单（剪切/复制/粘贴/全选）的深色化；CommandTarget 指回所在 TextBox -->
+        <!-- 托盘菜单与输入框右键菜单共用的深色样式：与窗口同语言（圆角 8、#2E2E2E 细边、卡片式菜单项） -->
         <Style x:Key="DarkMenu" TargetType="{x:Type ContextMenu}">
-            <Setter Property="Foreground" Value="#FFD6D6D6"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI"/>
             <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#FFD6D6D6"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type ContextMenu}">
-                        <Border BorderBrush="#FF2E2E2E" BorderThickness="1" CornerRadius="6"
-                                Background="#FF141414" Padding="4">
-                            <ItemsPresenter/>
-                        </Border>
+                        <!-- 右下留 10 DIP 给投影 -->
+                        <Grid Margin="0,0,10,10">
+                            <Border BorderBrush="#FF2E2E2E" BorderThickness="1" CornerRadius="8"
+                                    Background="#FF141414" Padding="5">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="16" ShadowDepth="3" Direction="315"
+                                                      Opacity="0.45" Color="Black"/>
+                                </Border.Effect>
+                                <ItemsPresenter/>
+                            </Border>
+                        </Grid>
                     </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Resources">
+                <Setter.Value>
+                    <Style TargetType="Separator">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Separator">
+                                    <Border Background="#FF1D1D1D" Height="1" Margin="6,4"/>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
                 </Setter.Value>
             </Setter>
         </Style>
@@ -80,12 +101,14 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type MenuItem}">
-                        <Border x:Name="Bd" Background="Transparent" Padding="10,5" CornerRadius="3">
+                        <Border x:Name="Bd" Background="Transparent" Padding="12,7" CornerRadius="4"
+                                Margin="0,1">
                             <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#FF2A2A2A"/>
+                                <Setter TargetName="Bd" Property="Background" Value="#FF262626"/>
+                                <Setter Property="Foreground" Value="#FFEAEAEA"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground" Value="#FF555555"/>
@@ -101,7 +124,7 @@
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="Separator">
-                                <Border Background="#FF1D1D1D" Height="1" Margin="8,3"/>
+                                <Border Background="#FF1D1D1D" Height="1" Margin="6,4"/>
                             </ControlTemplate>
                         </Setter.Value>
                     </Setter>

@@ -1,9 +1,14 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Forms;
 using Application = System.Windows.Application;
+using ContextMenu = System.Windows.Controls.ContextMenu;
+using MenuItem = System.Windows.Controls.MenuItem;
+using Orientation = System.Windows.Controls.Orientation;
+using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 using MessageBox = System.Windows.MessageBox;
 
 namespace Jotter;
@@ -52,34 +57,64 @@ public partial class App : Application
             Icon = MakeIcon(),
             Text = "Jotter 速记（Ctrl+Alt+N）",
             Visible = true,
-            ContextMenuStrip = BuildTrayMenu(),
         };
         _tray.DoubleClick += (s, e) => _main?.ShowPopup();
+        _tray.MouseUp += (s, e) =>
+        {
+            if (e.Button == MouseButtons.Right) ShowTrayMenu();
+        };
     }
 
-    private ContextMenuStrip BuildTrayMenu()
+    /// <summary>托盘右键：每次弹出都重建菜单（自启动状态、事件都新鲜），样式走 WPF 深色主题。</summary>
+    private void ShowTrayMenu()
     {
-        var menu = new ContextMenuStrip();
-        // 原生白底菜单和整体灰阶 UI 严重打架，整套换深色
-        menu.Renderer = new ToolStripProfessionalRenderer(new DarkMenuColors());
-        menu.Font = new Font("Segoe UI", 9.5f);
-        menu.ForeColor = Color.FromArgb(214, 214, 214);
-        // 注意别关 ShowImageMargin——"开机自启动"的勾选标记画在 margin 区，关了就看不见了
+        var menu = BuildTrayMenuWpf();
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+        menu.IsOpen = true;
+    }
 
-        menu.Items.Add("记一条", null, (s, e) => _main?.ShowPopup());
-        menu.Items.Add("查看笔记", null, (s, e) => OpenViewer());
-        menu.Items.Add("打开笔记文件夹", null, (s, e) => OpenNotesFolder());
+    private ContextMenu BuildTrayMenuWpf()
+    {
+        var menu = new ContextMenu { Style = (Style)FindResource("DarkMenu") };
 
-        var auto = new ToolStripMenuItem("开机自启动") { CheckOnClick = true, Checked = AutoStart.IsEnabled() };
-        auto.CheckedChanged += (s, e) => AutoStart.Set(auto.Checked);
-        menu.Items.Add(auto);
+        var open = new MenuItem { Header = "记一条" };
+        open.Click += (s, e) => _main?.ShowPopup();
+        var view = new MenuItem { Header = "查看笔记" };
+        view.Click += (s, e) => OpenViewer();
+        var folder = new MenuItem { Header = "打开笔记文件夹" };
+        folder.Click += (s, e) => OpenNotesFolder();
 
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("退出", null, (s, e) =>
+        // 自启动用圆点指示，避免引回 WinForms 的勾选列
+        var dot = new System.Windows.Shapes.Ellipse
+        {
+            Width = 6,
+            Height = 6,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(12, 0, 0, 0),
+        };
+        var autoPanel = new StackPanel { Orientation = Orientation.Horizontal };
+        autoPanel.Children.Add(new TextBlock { Text = "开机自启动" });
+        autoPanel.Children.Add(dot);
+        var auto = new MenuItem { Header = autoPanel };
+        if (AutoStart.IsEnabled())
+            dot.Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 201, 201, 201)); // #C9C9C9 实心
+        else
+            dot.Stroke = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 85, 85, 85));  // #555555 空心
+        auto.Click += (s, e) => AutoStart.Set(!AutoStart.IsEnabled());
+
+        var quit = new MenuItem { Header = "退出" };
+        quit.Click += (s, e) =>
         {
             _main?.RealClose();
             Shutdown();
-        });
+        };
+
+        menu.Items.Add(open);
+        menu.Items.Add(view);
+        menu.Items.Add(folder);
+        menu.Items.Add(auto);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(quit);
         return menu;
     }
 
@@ -123,32 +158,6 @@ public partial class App : Application
         _tray?.Dispose();
         _mutex?.Dispose();
         base.OnExit(e);
-    }
-
-    /// <summary>托盘菜单的深色配色：与主 UI 同一套灰阶。</summary>
-    private sealed class DarkMenuColors : ProfessionalColorTable
-    {
-        private static Color Bg => Color.FromArgb(15, 15, 15);      // 0F0F0F
-        private static Color Hover => Color.FromArgb(38, 38, 38);   // 262626
-        private static Color Border => Color.FromArgb(46, 46, 46);  // 2E2E2E
-        private static Color Sep => Color.FromArgb(29, 29, 29);     // 1D1D1D
-
-        public override Color ToolStripDropDownBackground => Bg;
-        public override Color ImageMarginGradientBegin => Bg;
-        public override Color ImageMarginGradientMiddle => Bg;
-        public override Color ImageMarginGradientEnd => Bg;
-        public override Color MenuBorder => Border;
-        public override Color MenuItemBorder => Hover;
-        public override Color MenuItemSelected => Hover;
-        public override Color MenuItemSelectedGradientBegin => Hover;
-        public override Color MenuItemSelectedGradientEnd => Hover;
-        public override Color MenuItemPressedGradientBegin => Hover;
-        public override Color MenuItemPressedGradientEnd => Hover;
-        public override Color CheckBackground => Hover;
-        public override Color CheckSelectedBackground => Hover;
-        public override Color CheckPressedBackground => Hover;
-        public override Color SeparatorDark => Sep;
-        public override Color SeparatorLight => Sep;
     }
 
     internal static Icon MakeIcon()

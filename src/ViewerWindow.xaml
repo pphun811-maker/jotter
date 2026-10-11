@@ -176,11 +176,17 @@
                   </StackPanel>
                 </Border>
                 <DataTemplate.Triggers>
+                  <!-- 悬浮即显操作按钮，不必先选中；悬浮时卡片微亮，选中边框更亮 -->
+                  <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                               Value="True">
+                    <Setter TargetName="Card" Property="BorderBrush" Value="#FF2E2E2E"/>
+                    <Setter TargetName="Card" Property="Background" Value="#FF191919"/>
+                    <Setter TargetName="Ops" Property="Visibility" Value="Visible"/>
+                  </DataTrigger>
                   <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
                                Value="True">
                     <Setter TargetName="Card" Property="BorderBrush" Value="#FF3D3D3D"/>
                     <Setter TargetName="Card" Property="Background" Value="#FF1C1C1C"/>
-                    <Setter TargetName="Ops" Property="Visibility" Value="Visible"/>
                   </DataTrigger>
                 </DataTemplate.Triggers>
               </DataTemplate>
