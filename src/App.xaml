@@ -59,7 +59,9 @@
             </Setter>
         </Style>
 
-        <!-- 托盘菜单与输入框右键菜单共用的深色样式：与窗口同语言（圆角 8、#2E2E2E 细边、卡片式菜单项） -->
+        <!-- 托盘菜单与输入框右键菜单共用的深色样式：与窗口同语言（圆角 8、#2E2E2E 细边、卡片式菜单项）
+             注意：菜单内的 Separator 样式放 App 级隐式样式（下方）——Style.Setter 不支持设 Resources，
+             写 <Setter Property="Resources"> 会运行时 XamlParseException（v1.1.0 的启动崩溃就是这个） -->
         <Style x:Key="DarkMenu" TargetType="{x:Type ContextMenu}">
             <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI"/>
             <Setter Property="FontSize" Value="12"/>
@@ -79,19 +81,6 @@
                             </Border>
                         </Grid>
                     </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Setter Property="Resources">
-                <Setter.Value>
-                    <Style TargetType="Separator">
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Separator">
-                                    <Border Background="#FF1D1D1D" Height="1" Margin="6,4"/>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
                 </Setter.Value>
             </Setter>
         </Style>
@@ -118,18 +107,20 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- 菜单分隔线深色化：App 级隐式样式，托盘菜单与输入框右键菜单通用 -->
+        <Style TargetType="Separator">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Separator">
+                        <Border Background="#FF1D1D1D" Height="1" Margin="6,4"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 输入框右键菜单（剪切/复制/粘贴/全选）；CommandTarget 指回所在 TextBox -->
         <ContextMenu x:Key="TextBoxMenu" Style="{StaticResource DarkMenu}">
-            <ContextMenu.Resources>
-                <Style TargetType="Separator">
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="Separator">
-                                <Border Background="#FF1D1D1D" Height="1" Margin="6,4"/>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </ContextMenu.Resources>
             <MenuItem Header="剪切" Command="Cut"
                       CommandTarget="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
             <MenuItem Header="复制" Command="Copy"

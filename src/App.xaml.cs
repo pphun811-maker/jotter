@@ -141,6 +141,15 @@ public partial class App : Application
         }
     }
 
+    /// <summary>explorer 重启后（TaskbarCreated 广播）重建托盘图标，不然图标永久消失。</summary>
+    public void RestoreTray()
+    {
+        if (_tray == null) return;
+        _tray.Visible = false;
+        _tray.Icon = MakeIcon();
+        _tray.Visible = true;
+    }
+
     private void OpenNotesFolder()
     {
         // LoadOrDefault 而非 new：用户在 settings.json 自定义过 NotesFolder 时要打开对的地方

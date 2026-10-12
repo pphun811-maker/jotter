@@ -39,6 +39,12 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
 
+    [DllImport("user32.dll")]
+    private static extern uint RegisterWindowMessage(string lpString);
+
+    // explorer 重启时系统广播这个消息，托盘图标必须重建，否则永久消失
+    private static readonly uint WM_TASKBARCREATED = RegisterWindowMessage("TaskbarCreated");
+
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int L, T, R, B; }
 
@@ -116,10 +122,12 @@ public partial class MainWindow : Window
         var (mods, vk) = parsed!.Value;
         if (!RegisterHotKey(_hwnd, _hotkeyId, mods, vk))
         {
-            MessageBox.Show(
+            // 延迟到启动完成后提示：现在就弹会阻塞构造流程，托盘图标就创建不出来了
+            Dispatcher.BeginInvoke(() => MessageBox.Show(
                 $"热键 {_config.Hotkey} 注册失败，可能被其他程序占用。\n" +
                 "可修改程序目录下 settings.json 里的 Hotkey 后重新启动。",
-                "Jotter", MessageBoxButton.OK, MessageBoxImage.Warning);
+                "Jotter", MessageBoxButton.OK, MessageBoxImage.Warning),
+                System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         }
     }
 
@@ -130,6 +138,10 @@ public partial class MainWindow : Window
             if (IsVisible) HidePopup(keepDraft: true);
             else ShowPopup();
             handled = true;
+        }
+        else if (WM_TASKBARCREATED != 0 && msg == (int)WM_TASKBARCREATED)
+        {
+            (Application.Current as App)?.RestoreTray();
         }
         return IntPtr.Zero;
     }
